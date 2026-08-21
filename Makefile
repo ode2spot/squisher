@@ -1,6 +1,10 @@
-.PHONY: build shell check-container deps dev ext lint fmt test package clean
+.PHONY: build shell check-container deps dev ext lint fmt test package clean deploy
 
 COMPOSE := docker compose -f docker/docker-compose.yml
+
+# Machine-local settings (DEPLOY_HOST etc.) live in a git-ignored .env.
+-include .env
+DEPLOY_DIR ?= ~/extensions
 
 # ---------------------------------------------------------------------------
 # HOST SIDE — container management only. Everything else runs inside the
@@ -14,6 +18,20 @@ build:
 # Drop into the container
 shell:
 	$(COMPOSE) run --rm dev
+
+# Copy the built extension to another machine (host side: uses your ssh
+# keys/password). Load $(DEPLOY_DIR)/squisher unpacked in Edge there.
+deploy:
+	@[ -n "$(DEPLOY_HOST)" ] || { \
+	  echo "DEPLOY_HOST is not set. Put DEPLOY_HOST=user@host in .env"; \
+	  echo "or run: make deploy DEPLOY_HOST=user@host"; \
+	  exit 1; }
+	@[ -d dist/extension ] || { \
+	  echo "No build at dist/extension — run ./scripts/run-in-docker.sh make ext first."; \
+	  exit 1; }
+	rsync -a --delete --rsync-path="mkdir -p $(DEPLOY_DIR) && rsync" \
+	  dist/extension/ "$(DEPLOY_HOST):$(DEPLOY_DIR)/squisher/"
+	@echo "Deployed to $(DEPLOY_HOST):$(DEPLOY_DIR)/squisher"
 
 # ---------------------------------------------------------------------------
 # CONTAINER SIDE

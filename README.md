@@ -72,7 +72,14 @@ repo had a node/TS precedent, so the lighter option won).
 | `make fmt`     | container | prettier write                                 |
 | `make test`    | container | Unit tests via node's built-in runner          |
 | `make package` | container | Build `dist/squisher-<version>.zip`            |
+| `make deploy`  | host      | rsync `dist/extension/` to `DEPLOY_HOST`       |
 | `make clean`   | container | Remove build artifacts                         |
+
+`make deploy` copies the built extension to `DEPLOY_HOST` as
+`DEPLOY_DIR/squisher` (default `~/extensions`). `DEPLOY_HOST` has no
+default: set `DEPLOY_HOST=user@host` in a git-ignored `.env` at the repo
+root, or pass it on the command line. The target machine needs Remote
+Login enabled (System Settings → General → Sharing on a Mac).
 
 After a rebuild, reload the extension from the browser's extensions page to
 pick up changes.
