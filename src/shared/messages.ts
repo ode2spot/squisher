@@ -36,8 +36,8 @@ export type ContentToPopup =
       inRms: number;
       /** dB of gain reduction from DynamicsCompressorNode.reduction (<= 0). */
       reduction: number;
-      /** dB of downward expansion from the expander worklet (<= 0). */
-      expReduction: number;
+      /** dB of upward-expansion boost from the expander worklet (>= 0). */
+      expBoost: number;
       outPeak: number;
       outRms: number;
       /** True if any output sample hit full scale during this frame. */

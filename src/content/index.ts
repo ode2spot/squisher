@@ -163,12 +163,12 @@ function sendMeters(): void {
   let outPeak = 0;
   let outRms = 0;
   let reduction = 0;
-  let expReduction = 0;
+  let expBoost = 0;
   let clipped = false;
   for (const el of liveElements) {
     const chain = chains.get(el);
     if (!chain) continue;
-    expReduction = Math.min(expReduction, chain.expanderGrDb);
+    expBoost = Math.max(expBoost, chain.expanderBoostDb);
     chain.inputAnalyser.getFloatTimeDomainData(meterBuffer);
     inPeak = Math.max(inPeak, peak(meterBuffer));
     inRms = Math.max(inRms, rms(meterBuffer));
@@ -187,7 +187,7 @@ function sendMeters(): void {
     inPeak,
     inRms,
     reduction,
-    expReduction,
+    expBoost,
     outPeak,
     outRms,
     clipped,

@@ -21,17 +21,19 @@ export interface CompressorParams {
   makeupGain: number;
 }
 
+/** Upward expander: lifts signal below the threshold (quiet dialogue)
+ *  toward it, leaving loud passages alone. */
 export interface ExpanderParams {
   enabled: boolean;
-  /** dB; below this the signal is pushed down. */
+  /** dB; below this the signal is lifted. */
   threshold: number;
-  /** 1..10 downward expansion ratio below threshold. */
+  /** 1..10; the region below threshold is compressed upward by (1 - 1/r). */
   ratio: number;
-  /** seconds — how fast gain recovers when signal comes back. Log scale. */
+  /** seconds — how fast the boost ducks when loud signal arrives. Log scale. */
   attack: number;
-  /** seconds — how fast attenuation sets in as signal falls away. Log scale. */
+  /** seconds — how fast the boost builds as the signal falls away. Log scale. */
   release: number;
-  /** dB, maximum attenuation (the expansion floor). */
+  /** dB, maximum boost (caps how far the noise floor comes up too). */
   depth: number;
 }
 
@@ -79,7 +81,7 @@ export const EXPANDER_RANGES: Record<Exclude<keyof ExpanderParams, 'enabled'>, R
   ratio: { min: 1, max: 10, log: false, unit: ':1' },
   attack: { min: 0.0005, max: 0.1, log: true, unit: 's' },
   release: { min: 0.01, max: 1, log: true, unit: 's' },
-  depth: { min: 0, max: 60, log: false, unit: 'dB' },
+  depth: { min: 0, max: 24, log: false, unit: 'dB' },
 };
 
 export const EQ_GAIN_RANGE: Range = { min: -15, max: 15, log: false, unit: 'dB' };
@@ -139,11 +141,11 @@ export function defaultParams(): SquisherParams {
     },
     expander: {
       enabled: false,
-      threshold: -50,
+      threshold: -45,
       ratio: 2,
       attack: 0.002,
       release: 0.2,
-      depth: 15,
+      depth: 10,
     },
     eq: {
       lowShelf: { enabled: false, freq: 120, gain: 0, q: 1 },

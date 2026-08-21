@@ -1,9 +1,10 @@
-// Downward expander as an AudioWorkletProcessor (Web Audio has no native
-// expander node). Below the threshold the signal is pushed down by the
-// expansion ratio, capped at `depth` dB of attenuation — used to sink hiss
-// and room noise between dialogue lines before the compressor lifts
-// everything. Parameters and meter reporting run over the node's message
-// port; the file is bundled standalone and loaded via audioWorklet.addModule.
+// Upward expander as an AudioWorkletProcessor (Web Audio has no native
+// expander node). Signal below the threshold is lifted toward it by the
+// ratio, capped at `depth` dB of boost — used to bring up quiet dialogue
+// without touching loud effects. The boost backs off quickly (attack) when
+// loud content returns and builds slowly (release) as the signal falls
+// away. Parameters and meter reporting run over the node's message port;
+// the file is bundled standalone and loaded via audioWorklet.addModule.
 
 // Minimal ambient declarations: lib.dom has no AudioWorklet processor scope.
 declare const sampleRate: number;
@@ -40,8 +41,8 @@ class ExpanderProcessor extends AudioWorkletProcessor {
 
   /** Detector envelope (linear amplitude). */
   private env = 0;
-  /** Current applied gain in dB (smoothed gain reduction, <= 0). */
-  private gainDb = 0;
+  /** Current applied boost in dB (smoothed, >= 0). */
+  private boostDb = 0;
   private nextMeterFrame = 0;
 
   constructor() {
@@ -62,8 +63,8 @@ class ExpanderProcessor extends AudioWorkletProcessor {
   }
 
   private setTimes(attack: number, release: number): void {
-    // One-pole smoothing coefficients; attack governs gain recovery when the
-    // signal returns, release governs how fast attenuation sets in.
+    // One-pole smoothing coefficients; attack governs how fast the boost
+    // ducks when loud signal arrives, release how fast it builds back up.
     this.attackCoeff = Math.exp(-1 / (sampleRate * Math.max(attack, 0.0001)));
     this.releaseCoeff = Math.exp(-1 / (sampleRate * Math.max(release, 0.001)));
   }
@@ -76,7 +77,7 @@ class ExpanderProcessor extends AudioWorkletProcessor {
 
     if (!this.enabled) {
       for (let ch = 0; ch < output.length; ch++) output[ch]!.set(input[ch] ?? input[0]!);
-      this.gainDb = 0;
+      this.boostDb = 0;
       this.reportMeters(frames);
       return true;
     }
@@ -94,13 +95,16 @@ class ExpanderProcessor extends AudioWorkletProcessor {
       const envDb = 20 * Math.log10(Math.max(this.env, 1e-6));
       let targetDb = 0;
       if (envDb < this.thresholdDb) {
-        targetDb = Math.max((envDb - this.thresholdDb) * (this.ratio - 1), -this.depthDb);
+        // Lift toward the threshold: at ratio r the region below the
+        // threshold is compressed upward by (1 - 1/r), capped at depth.
+        targetDb = Math.min((this.thresholdDb - envDb) * (1 - 1 / this.ratio), this.depthDb);
       }
-      // Gain rising back toward 0 uses attack; falling uses release.
-      const coeff = targetDb > this.gainDb ? this.attackCoeff : this.releaseCoeff;
-      this.gainDb = targetDb + coeff * (this.gainDb - targetDb);
+      // Boost ducking (loud signal arrived) uses attack; building back up
+      // as the signal falls away uses release.
+      const coeff = targetDb < this.boostDb ? this.attackCoeff : this.releaseCoeff;
+      this.boostDb = targetDb + coeff * (this.boostDb - targetDb);
 
-      const gain = Math.pow(10, this.gainDb / 20);
+      const gain = Math.pow(10, this.boostDb / 20);
       for (let ch = 0; ch < output.length; ch++) {
         output[ch]![i] = (input[ch] ?? input[0]!)[i]! * gain;
       }
@@ -115,7 +119,7 @@ class ExpanderProcessor extends AudioWorkletProcessor {
     this.nextMeterFrame -= frames;
     if (this.nextMeterFrame <= 0) {
       this.nextMeterFrame = METER_INTERVAL_FRAMES;
-      this.port.postMessage({ gr: this.gainDb });
+      this.port.postMessage({ boost: this.boostDb });
     }
   }
 }

@@ -116,51 +116,58 @@ export class LevelMeter {
   }
 }
 
-/** Gain-reduction meter: 0 dB at the right edge, growing leftward. */
-export class GrMeter {
+/**
+ * Deviation-from-unity gain meter: 0 dB at the right edge, the bar growing
+ * leftward with the magnitude — hardware GR meter style. Fed with a
+ * magnitude in dB (>= 0); used for compressor gain reduction (amber) and
+ * expander boost (green).
+ */
+export class GainMeter {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly w: number;
   private readonly h: number;
+  private readonly color: string;
   private display = 0;
   private lastFrame = 0;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, color: string = COLOR_AMBER) {
     this.ctx = setupCanvas(canvas);
     this.w = canvas.clientWidth || canvas.width;
     this.h = canvas.clientHeight || canvas.height;
+    this.color = color;
   }
 
-  /** Feed reduction in dB (<= 0); draws one frame. Returns the dB shown. */
-  draw(reductionDb: number, now: number): number {
+  /** Feed a magnitude in dB (>= 0); draws one frame. Returns the dB shown. */
+  draw(magnitudeDb: number, now: number): number {
     const dt = this.lastFrame ? (now - this.lastFrame) / 1000 : 0;
     this.lastFrame = now;
     if (reducedMotion.matches) {
-      this.display = reductionDb;
+      this.display = magnitudeDb;
     } else {
-      // GR release falloff: recover toward 0 smoothly, respond to more
-      // reduction instantly (like the needle of a hardware meter).
-      const recovered = this.display + LEVEL_FALL_DB_PER_S * dt;
-      this.display = Math.min(reductionDb, Math.min(recovered, 0));
+      // Respond to growth instantly, fall back smoothly (like the needle
+      // of a hardware meter).
+      const fallen = Math.max(this.display - LEVEL_FALL_DB_PER_S * dt, 0);
+      this.display = Math.max(magnitudeDb, fallen);
     }
     this.render();
     return this.display;
   }
 
-  private xFor(db: number): number {
-    // 0 dB at the right edge, GR_MIN_DB at the left.
-    return (1 - clamp(db / GR_MIN_DB, 0, 1)) * this.w;
+  private xFor(magDb: number): number {
+    // 0 dB at the right edge, -GR_MIN_DB of magnitude at the left.
+    return (1 - clamp(magDb / -GR_MIN_DB, 0, 1)) * this.w;
   }
 
   private render(): void {
     const { ctx, w, h } = this;
     ctx.clearRect(0, 0, w, h);
-    for (const tick of [-3, -6, -12, -18]) {
+    for (const tick of [3, 6, 12, 18]) {
       ctx.fillStyle = COLOR_TICK;
       ctx.fillRect(Math.round(this.xFor(tick)), 0, 1, h);
     }
     const x = this.xFor(this.display);
     if (x < w) {
-      ctx.fillStyle = COLOR_AMBER;
+      ctx.fillStyle = this.color;
       ctx.fillRect(x, 2, w - x, h - 4);
     }
   }

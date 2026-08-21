@@ -10,7 +10,7 @@ Per media element the audio is routed through Web Audio:
 ```
 MediaElementSource
   → input analyser
-  → downward expander (AudioWorklet)
+  → upward expander (AudioWorklet)
   → EQ: low shelf → peak 1 → peak 2 → high shelf
   → DynamicsCompressor
   → makeup gain
@@ -18,11 +18,12 @@ MediaElementSource
   → destination
 ```
 
-The expander pushes signal below its threshold further down (hiss and room
-noise between dialogue lines) before the compressor lifts everything. Web
-Audio has no expander node, so it's a hand-written AudioWorklet processor;
-on the rare site whose CSP blocks worklet modules the popup flags it and
-the rest of the chain runs without it.
+The expander lifts signal below its threshold (quiet dialogue) toward it,
+capped at the depth setting so the noise floor only comes up so far, and
+ducks the boost quickly when loud content returns. Web Audio has no
+expander node, so it's a hand-written AudioWorklet processor; on the rare
+site whose CSP blocks worklet modules the popup flags it and the rest of
+the chain runs without it.
 
 The makeup gain control is honest: `DynamicsCompressorNode` applies a hidden
 automatic makeup gain (per the Web Audio spec, ~+17 dB at heavy settings),

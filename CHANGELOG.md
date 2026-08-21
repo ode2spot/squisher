@@ -4,9 +4,9 @@
 
 Initial release.
 
-- Per-media-element processing chain: downward expander (AudioWorklet)
-  into 4-band EQ (low shelf, two parametric peaks, high shelf) into a
-  compressor with makeup gain. The compressor node's hidden automatic
+- Per-media-element processing chain: upward expander (AudioWorklet, lifts
+  quiet dialogue) into 4-band EQ (low shelf, two parametric peaks, high
+  shelf) into a compressor with makeup gain. The compressor node's hidden automatic
   makeup is cancelled so the makeup control is true post-compression gain.
 - Media discovery on load and via MutationObserver, including open shadow
   roots; handles element removal and sites that already use Web Audio.

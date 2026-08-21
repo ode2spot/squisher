@@ -31,7 +31,7 @@ import {
 } from '../shared/storage';
 import { sliderRow, type SliderRow } from './controls';
 import { EqCurve } from './eq-curve';
-import { GrMeter, LevelMeter } from './meters';
+import { GainMeter, LevelMeter } from './meters';
 
 const METER_STALE_MS = 500;
 const PERSIST_DEBOUNCE_MS = 400;
@@ -79,8 +79,8 @@ const readoutGr = el<HTMLSpanElement>('readout-gr');
 const readoutOut = el<HTMLSpanElement>('readout-out');
 
 const meterIn = new LevelMeter(el<HTMLCanvasElement>('meter-in'));
-const meterExp = new GrMeter(el<HTMLCanvasElement>('meter-exp'));
-const meterGr = new GrMeter(el<HTMLCanvasElement>('meter-gr'));
+const meterExp = new GainMeter(el<HTMLCanvasElement>('meter-exp'), '#3ddc84');
+const meterGr = new GainMeter(el<HTMLCanvasElement>('meter-gr'));
 const meterOut = new LevelMeter(el<HTMLCanvasElement>('meter-out'));
 const readoutExp = el<HTMLSpanElement>('readout-exp');
 const eqCurve = new EqCurve(el<HTMLCanvasElement>('eq-curve'));
@@ -468,7 +468,7 @@ function aggregateMeters(now: number) {
   let outPeak = 0;
   let outRms = 0;
   let reduction = 0;
-  let expReduction = 0;
+  let expBoost = 0;
   let any = false;
   for (const [id, frame] of meterFrames) {
     if (now - frame.at > METER_STALE_MS) {
@@ -481,9 +481,9 @@ function aggregateMeters(now: number) {
     outPeak = Math.max(outPeak, frame.msg.outPeak);
     outRms = Math.max(outRms, frame.msg.outRms);
     reduction = Math.min(reduction, frame.msg.reduction);
-    expReduction = Math.min(expReduction, frame.msg.expReduction);
+    expBoost = Math.max(expBoost, frame.msg.expBoost);
   }
-  return { any, inPeak, inRms, outPeak, outRms, reduction, expReduction };
+  return { any, inPeak, inRms, outPeak, outRms, reduction, expBoost };
 }
 
 function fmtDb(db: number): string {
@@ -492,14 +492,14 @@ function fmtDb(db: number): string {
 
 function meterLoop(now: number): void {
   const m = aggregateMeters(now);
-  const expDb = meterExp.draw(m.any ? m.expReduction : 0, now);
-  const grDb = meterGr.draw(m.any ? m.reduction : 0, now);
+  const expDb = meterExp.draw(m.any ? m.expBoost : 0, now);
+  const grMag = meterGr.draw(m.any ? -m.reduction : 0, now);
   const inLevels = meterIn.draw(m.inRms, m.inPeak, now);
   const outLevels = meterOut.draw(m.outRms, m.outPeak, now);
   readoutIn.textContent = fmtDb(m.any ? inLevels.heldDb : -Infinity);
   readoutOut.textContent = fmtDb(m.any ? outLevels.heldDb : -Infinity);
-  readoutGr.textContent = grDb <= -0.05 ? grDb.toFixed(1) : '0.0';
-  readoutExp.textContent = expDb <= -0.05 ? expDb.toFixed(1) : '0.0';
+  readoutGr.textContent = grMag >= 0.05 ? (-grMag).toFixed(1) : '0.0';
+  readoutExp.textContent = expDb >= 0.05 ? `+${expDb.toFixed(1)}` : '0.0';
   requestAnimationFrame(meterLoop);
 }
 

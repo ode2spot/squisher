@@ -32,8 +32,8 @@ export class MediaChain {
   private readonly eqBands: Record<string, BiquadFilterNode>;
   private readonly processingHead: AudioNode;
   private expander: AudioWorkletNode | null = null;
-  /** Latest gain reduction reported by the expander worklet, in dB (<= 0). */
-  expanderGrDb = 0;
+  /** Latest boost reported by the expander worklet, in dB (>= 0). */
+  expanderBoostDb = 0;
   private bypassed = false;
   private lastParams: SquisherParams | null = null;
 
@@ -93,8 +93,8 @@ export class MediaChain {
   attachExpander(node: AudioWorkletNode): void {
     if (this.expander) return;
     this.expander = node;
-    node.port.onmessage = (e: MessageEvent<{ gr: number }>) => {
-      this.expanderGrDb = e.data.gr;
+    node.port.onmessage = (e: MessageEvent<{ boost: number }>) => {
+      this.expanderBoostDb = e.data.boost;
     };
     node.connect(this.processingHead);
     if (!this.bypassed) {
@@ -106,7 +106,7 @@ export class MediaChain {
 
   setExpanderMeters(on: boolean): void {
     this.expander?.port.postMessage({ type: 'meters', on });
-    if (!on) this.expanderGrDb = 0;
+    if (!on) this.expanderBoostDb = 0;
   }
 
   private sendExpanderParams(params: SquisherParams): void {

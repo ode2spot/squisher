@@ -117,11 +117,11 @@ export const BUILT_IN_PRESETS: readonly Preset[] = [
     };
     p.expander = {
       enabled: true,
-      threshold: -45,
+      threshold: -40,
       ratio: 2,
       attack: 0.002,
       release: 0.25,
-      depth: 12,
+      depth: 8,
     };
     p.eq.lowShelf = { enabled: true, freq: 120, gain: -4, q: 1 };
     p.eq.param1 = { enabled: true, freq: 2500, gain: 3, q: 1.2 };
