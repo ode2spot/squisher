@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Squisher</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>SQUISHER</h1>
+      <div id="status" class="status">
+        <span id="status-dot" class="dot"></span>
+        <span id="status-text">connecting</span>
+      </div>
+    </header>
+
+    <div id="banner" class="banner" hidden></div>
+
+    <section id="meters" class="meters">
+      <div class="meter-row">
+        <span class="meter-label">IN</span>
+        <canvas id="meter-in" width="220" height="16"></canvas>
+        <span id="readout-in" class="readout">-inf</span>
+      </div>
+      <div class="meter-row">
+        <span class="meter-label">GR</span>
+        <canvas id="meter-gr" width="220" height="16"></canvas>
+        <span id="readout-gr" class="readout">0.0</span>
+      </div>
+      <div class="meter-row">
+        <span class="meter-label">OUT</span>
+        <canvas id="meter-out" width="220" height="16"></canvas>
+        <span id="readout-out" class="readout">-inf</span>
+        <button id="clip" class="clip-led" title="Clip indicator — click to reset"></button>
+      </div>
+    </section>
+
+    <section class="main-controls">
+      <div class="amount-row">
+        <label for="amount">AMOUNT</label>
+        <input id="amount" type="range" min="0" max="100" step="1" value="0" />
+        <span id="readout-amount" class="readout">0</span>
+      </div>
+      <div class="control-row">
+        <button id="bypass" class="toggle" title="Toggle bypass (Alt+Shift+S)">BYPASS</button>
+        <select id="preset" title="Preset"></select>
+        <button id="save-preset" class="small" title="Save current settings as a preset">＋</button>
+      </div>
+      <label class="remember">
+        <input id="remember" type="checkbox" />
+        <span>Remember for this site (<span id="site-name">…</span>)</span>
+      </label>
+    </section>
+
+    <details id="advanced">
+      <summary>Advanced</summary>
+      <div id="comp-controls" class="param-grid"></div>
+    </details>
+
+    <details id="eq">
+      <summary>EQ</summary>
+      <canvas id="eq-curve" width="336" height="110"></canvas>
+      <div id="eq-controls"></div>
+    </details>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
