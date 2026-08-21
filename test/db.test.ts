@@ -2,8 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   clamp,
+  compressorAutoMakeupDb,
   dbToLinear,
   linearToDb,
+  maxConsecutiveOver,
   linToNorm,
   logToNorm,
   normToLin,
@@ -64,6 +66,23 @@ test('linear slider mapping round-trips and clamps', () => {
   assert.equal(linToNorm(10, -60, 0), 1);
   assert.equal(normToLin(0.5, -60, 0), -30);
   assert.equal(normToLin(2, -60, 0), 0);
+});
+
+test('compressorAutoMakeupDb matches the spec formula', () => {
+  // 0.6 * -threshold * (1 - 1/ratio)
+  assert.ok(Math.abs(compressorAutoMakeupDb(-32, 8) - 16.8) < 1e-9);
+  assert.ok(Math.abs(compressorAutoMakeupDb(-24, 4) - 10.8) < 1e-9);
+  // No compression, no hidden gain to cancel.
+  assert.ok(Math.abs(compressorAutoMakeupDb(-32, 1)) < 1e-9);
+  assert.ok(Math.abs(compressorAutoMakeupDb(0, 8)) < 1e-9);
+});
+
+test('maxConsecutiveOver finds the longest run over a level', () => {
+  assert.equal(maxConsecutiveOver(new Float32Array([0, 0.5, 0, 0.5]), 1.0), 0);
+  assert.equal(maxConsecutiveOver(new Float32Array([0, 1.5, 0, 1.5]), 1.0), 1);
+  assert.equal(maxConsecutiveOver(new Float32Array([1.5, -1.5, 1.5, 0, 1.5]), 1.0), 3);
+  assert.equal(maxConsecutiveOver(new Float32Array([2, 2, 2, 2]), 1.0), 4);
+  assert.equal(maxConsecutiveOver(new Float32Array([]), 1.0), 0);
 });
 
 test('clamp', () => {

@@ -22,14 +22,17 @@ export type AmountDriven = Pick<CompressorParams, 'threshold' | 'ratio' | 'makeu
  * approach broadcast-style squash:
  *  - threshold falls linearly from -10 dB to -40 dB
  *  - ratio rises quadratically from 1:1 to 20:1 (slow start, aggressive end)
- *  - makeup rises to +12 dB, roughly tracking the average gain reduction
+ *  - makeup rises to +6 dB. This is true post-compression gain (the audio
+ *    graph cancels DynamicsCompressorNode's hidden automatic makeup, see
+ *    db.ts); it stays modest because a fast-attack compressor without a
+ *    limiter overshoots by roughly the makeup amount on loud onsets.
  */
 export function amountToCompressor(amount: number): AmountDriven {
   const a = clamp(amount, 0, 100) / 100;
   return {
     threshold: -10 - 30 * a,
     ratio: 1 + 19 * a * a,
-    makeupGain: 12 * a,
+    makeupGain: 6 * a,
   };
 }
 
@@ -67,6 +70,8 @@ export const BUILT_IN_PRESETS: readonly Preset[] = [
     p.amount = 0;
     p.compressor = { threshold: 0, knee: 0, ratio: 1, attack: 0.003, release: 0.25, makeupGain: 0 };
   }),
+  // Preset makeup gains are true post-compression gain (see
+  // amountToCompressor) and stay modest to leave onset-overshoot headroom.
   preset('Gentle', (p) => {
     p.amount = 25;
     p.compressor = {
@@ -75,7 +80,7 @@ export const BUILT_IN_PRESETS: readonly Preset[] = [
       ratio: 2,
       attack: 0.01,
       release: 0.25,
-      makeupGain: 3,
+      makeupGain: 2,
     };
   }),
   preset('Medium', (p) => {
@@ -86,7 +91,7 @@ export const BUILT_IN_PRESETS: readonly Preset[] = [
       ratio: 4,
       attack: 0.005,
       release: 0.25,
-      makeupGain: 6,
+      makeupGain: 3,
     };
   }),
   preset('Heavy', (p) => {
@@ -97,7 +102,7 @@ export const BUILT_IN_PRESETS: readonly Preset[] = [
       ratio: 8,
       attack: 0.003,
       release: 0.3,
-      makeupGain: 10,
+      makeupGain: 5,
     };
   }),
   preset('Old film dialogue', (p) => {
@@ -108,7 +113,7 @@ export const BUILT_IN_PRESETS: readonly Preset[] = [
       ratio: 6,
       attack: 0.005,
       release: 0.35,
-      makeupGain: 8,
+      makeupGain: 4,
     };
     p.eq.lowShelf = { enabled: true, freq: 120, gain: -4, q: 1 };
     p.eq.param1 = { enabled: true, freq: 2500, gain: 3, q: 1.2 };

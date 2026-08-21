@@ -11,7 +11,7 @@
 // Bypass is true bypass: the source is reconnected directly to the
 // destination (the input analyser stays attached as a pure tap so the input
 // meter keeps reading).
-import { dbToLinear } from '../shared/db';
+import { compressorAutoMakeupDb, dbToLinear } from '../shared/db';
 import {
   EQ_BAND_FILTER_TYPES,
   EQ_BAND_IDS,
@@ -82,7 +82,11 @@ export class MediaChain {
     this.compressor.ratio.value = c.ratio;
     this.compressor.attack.value = c.attack;
     this.compressor.release.value = c.release;
-    this.makeupGain.gain.value = dbToLinear(c.makeupGain);
+    // Cancel the node's hidden automatic makeup so c.makeupGain is the
+    // actual gain applied after compression.
+    this.makeupGain.gain.value = dbToLinear(
+      c.makeupGain - compressorAutoMakeupDb(c.threshold, c.ratio),
+    );
 
     for (const id of EQ_BAND_IDS) {
       const band = params.eq[id];

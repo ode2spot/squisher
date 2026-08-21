@@ -17,6 +17,11 @@ MediaElementSource
   → destination
 ```
 
+The makeup gain control is honest: `DynamicsCompressorNode` applies a hidden
+automatic makeup gain (per the Web Audio spec, ~+17 dB at heavy settings),
+which the graph cancels so the knob reads as true post-compression gain and
+loud onsets don't slam the clip ceiling.
+
 The popup shows input level, gain reduction, and output level (peak + RMS,
 peak hold, latching clip indicator), an Amount macro that drives
 threshold/ratio/makeup together, collapsible advanced compressor and 4-band

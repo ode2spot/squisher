@@ -1,7 +1,7 @@
 // Content script controller: wires discovered media elements into audio
 // graphs, applies stored settings, streams meter data to the popup while its
 // port is open, and reports activity to the service worker for the badge.
-import { peak, rms } from '../shared/db';
+import { maxConsecutiveOver, peak, rms } from '../shared/db';
 import {
   POPUP_PORT,
   type ContentToPopup,
@@ -141,6 +141,7 @@ function sendMeters(): void {
   let outPeak = 0;
   let outRms = 0;
   let reduction = 0;
+  let clipped = false;
   for (const el of liveElements) {
     const chain = chains.get(el);
     if (!chain) continue;
@@ -151,6 +152,10 @@ function sendMeters(): void {
     outPeak = Math.max(outPeak, peak(meterBuffer));
     outRms = Math.max(outRms, rms(meterBuffer));
     reduction = Math.min(reduction, chain.compressor.reduction);
+    // Samples here are floats, so exactly-full-scale sources don't trip
+    // this — only processing that would clip the DAC, and only when it's
+    // more than a single-sample transient overshoot.
+    clipped ||= maxConsecutiveOver(meterBuffer, 1.0001) >= 3;
   }
   const msg: ContentToPopup = {
     type: 'meters',
@@ -160,7 +165,7 @@ function sendMeters(): void {
     reduction,
     outPeak,
     outRms,
-    clipped: outPeak >= 0.999,
+    clipped,
   };
   popupPort.postMessage(msg);
 }

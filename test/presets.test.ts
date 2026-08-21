@@ -13,7 +13,7 @@ test('amount 100 hits the aggressive end of every range', () => {
   const c = amountToCompressor(100);
   assert.equal(c.threshold, -40);
   assert.equal(c.ratio, 20);
-  assert.equal(c.makeupGain, 12);
+  assert.equal(c.makeupGain, 6);
 });
 
 test('amount is clamped to 0..100', () => {
