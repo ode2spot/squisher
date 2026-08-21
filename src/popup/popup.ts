@@ -355,6 +355,7 @@ function connect(): void {
     portAlive = true;
     port.onMessage.addListener((msg: ContentToPopup) => handleMessage(msg));
     port.onDisconnect.addListener(() => {
+      void chrome.runtime.lastError; // expected on pages without a content script
       portAlive = false;
       if (!gotAnyState) showUnavailable();
     });
@@ -445,8 +446,8 @@ function meterLoop(now: number): void {
   const grDb = meterGr.draw(m.any ? m.reduction : 0, now);
   const inLevels = meterIn.draw(m.inRms, m.inPeak, now);
   const outLevels = meterOut.draw(m.outRms, m.outPeak, now);
-  readoutIn.textContent = fmtDb(m.any ? inLevels.peakDb : -Infinity);
-  readoutOut.textContent = fmtDb(m.any ? outLevels.peakDb : -Infinity);
+  readoutIn.textContent = fmtDb(m.any ? inLevels.heldDb : -Infinity);
+  readoutOut.textContent = fmtDb(m.any ? outLevels.heldDb : -Infinity);
   readoutGr.textContent = grDb <= -0.05 ? grDb.toFixed(1) : '0.0';
   requestAnimationFrame(meterLoop);
 }

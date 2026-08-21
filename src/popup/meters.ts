@@ -50,8 +50,13 @@ export class LevelMeter {
     this.h = canvas.clientHeight || canvas.height;
   }
 
-  /** Feed linear amplitudes; draws one frame. Returns the dB values shown. */
-  draw(rmsLinear: number, peakLinear: number, now: number): { rmsDb: number; peakDb: number } {
+  /** Feed linear amplitudes; draws one frame. Returns the dB values shown
+   *  (heldDb is the peak-hold value the marker sits at). */
+  draw(
+    rmsLinear: number,
+    peakLinear: number,
+    now: number,
+  ): { rmsDb: number; peakDb: number; heldDb: number } {
     const dt = this.lastFrame ? (now - this.lastFrame) / 1000 : 0;
     this.lastFrame = now;
 
@@ -73,7 +78,7 @@ export class LevelMeter {
     }
 
     this.render();
-    return { rmsDb, peakDb };
+    return { rmsDb, peakDb, heldDb: this.peakHold };
   }
 
   private xFor(db: number): number {
