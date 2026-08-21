@@ -1,7 +1,12 @@
 // Built-in presets and the Amount macro. Both are derived from the parameter
 // model in params.ts so there is one source of truth for shapes and ranges.
 import { clamp } from './db';
-import { COMPRESSOR_RANGES, defaultParams, type CompressorParams, type SquisherParams } from './params';
+import {
+  COMPRESSOR_RANGES,
+  defaultParams,
+  type CompressorParams,
+  type SquisherParams,
+} from './params';
 
 export interface Preset {
   name: string;
@@ -36,9 +41,17 @@ export function applyAmount(params: SquisherParams, amount: number): SquisherPar
     amount: clamp(amount, 0, 100),
     compressor: {
       ...params.compressor,
-      threshold: clamp(driven.threshold, COMPRESSOR_RANGES.threshold.min, COMPRESSOR_RANGES.threshold.max),
+      threshold: clamp(
+        driven.threshold,
+        COMPRESSOR_RANGES.threshold.min,
+        COMPRESSOR_RANGES.threshold.max,
+      ),
       ratio: clamp(driven.ratio, COMPRESSOR_RANGES.ratio.min, COMPRESSOR_RANGES.ratio.max),
-      makeupGain: clamp(driven.makeupGain, COMPRESSOR_RANGES.makeupGain.min, COMPRESSOR_RANGES.makeupGain.max),
+      makeupGain: clamp(
+        driven.makeupGain,
+        COMPRESSOR_RANGES.makeupGain.min,
+        COMPRESSOR_RANGES.makeupGain.max,
+      ),
     },
   };
 }
@@ -56,19 +69,47 @@ export const BUILT_IN_PRESETS: readonly Preset[] = [
   }),
   preset('Gentle', (p) => {
     p.amount = 25;
-    p.compressor = { threshold: -18, knee: 30, ratio: 2, attack: 0.01, release: 0.25, makeupGain: 3 };
+    p.compressor = {
+      threshold: -18,
+      knee: 30,
+      ratio: 2,
+      attack: 0.01,
+      release: 0.25,
+      makeupGain: 3,
+    };
   }),
   preset('Medium', (p) => {
     p.amount = 50;
-    p.compressor = { threshold: -24, knee: 30, ratio: 4, attack: 0.005, release: 0.25, makeupGain: 6 };
+    p.compressor = {
+      threshold: -24,
+      knee: 30,
+      ratio: 4,
+      attack: 0.005,
+      release: 0.25,
+      makeupGain: 6,
+    };
   }),
   preset('Heavy', (p) => {
     p.amount = 75;
-    p.compressor = { threshold: -32, knee: 20, ratio: 8, attack: 0.003, release: 0.3, makeupGain: 10 };
+    p.compressor = {
+      threshold: -32,
+      knee: 20,
+      ratio: 8,
+      attack: 0.003,
+      release: 0.3,
+      makeupGain: 10,
+    };
   }),
   preset('Old film dialogue', (p) => {
     p.amount = 65;
-    p.compressor = { threshold: -30, knee: 24, ratio: 6, attack: 0.005, release: 0.35, makeupGain: 8 };
+    p.compressor = {
+      threshold: -30,
+      knee: 24,
+      ratio: 6,
+      attack: 0.005,
+      release: 0.35,
+      makeupGain: 8,
+    };
     p.eq.lowShelf = { enabled: true, freq: 120, gain: -4, q: 1 };
     p.eq.param1 = { enabled: true, freq: 2500, gain: 3, q: 1.2 };
     p.eq.highShelf = { enabled: true, freq: 8000, gain: -2, q: 1 };

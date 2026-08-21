@@ -1,11 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  GLOBAL_KEY,
-  normalizeHostname,
-  resolveSettings,
-  siteKey,
-} from '../src/shared/storage';
+import { GLOBAL_KEY, normalizeHostname, resolveSettings, siteKey } from '../src/shared/storage';
 import { defaultParams } from '../src/shared/params';
 
 test('normalizeHostname lowercases and strips a trailing dot', () => {
