@@ -1,0 +1,18 @@
+services:
+  dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      - IN_SQUISHER_CONTAINER=1
+    volumes:
+      - ..:/workspace
+      # node_modules lives in a named volume so the linux-native esbuild
+      # binary never collides with anything installed on the macOS host.
+      - node_modules:/workspace/node_modules
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+volumes:
+  node_modules:
