@@ -3,6 +3,7 @@
 // port is open, and reports activity to the service worker for the badge.
 import { maxConsecutiveOver, peak, rms } from '../shared/db';
 import {
+  EXPANDER_PROCESSOR_NAME,
   POPUP_PORT,
   type ContentToPopup,
   type ContextState,
@@ -23,6 +24,9 @@ let ctx: AudioContext | null = null;
 let params: SquisherParams = defaultParams();
 let bypass = false;
 let lastReportedActive: boolean | null = null;
+/** Resolves true when the expander worklet module is usable in this frame. */
+let workletReady: Promise<boolean> | null = null;
+let workletOk = true;
 
 /** Chains persist for the life of the element: a MediaElementSourceNode can
  *  never be created twice, so the chain is kept even if the element leaves
@@ -38,6 +42,16 @@ const meterBuffer = new Float32Array(2048);
 function ensureContext(): AudioContext {
   if (!ctx) {
     ctx = new AudioContext();
+    // The worklet module can fail on sites whose CSP blocks it; the rest of
+    // the chain runs without the expander in that case.
+    workletReady = ctx.audioWorklet
+      .addModule(chrome.runtime.getURL('expander-processor.js'))
+      .then(() => true)
+      .catch(() => {
+        workletOk = false;
+        sendState();
+        return false;
+      });
     // The context starts suspended unless created during a user gesture;
     // resume on the next gesture and surface the state in the popup.
     const tryResume = () => {
@@ -67,6 +81,13 @@ function wireElement(el: HTMLMediaElement): void {
     chains.set(el, chain);
     // A play gesture is also a resume opportunity.
     el.addEventListener('play', () => void ctx?.resume());
+    const wired = chain;
+    void workletReady?.then((ok) => {
+      if (!ok || !ctx) return;
+      wired.attachExpander(new AudioWorkletNode(ctx, EXPANDER_PROCESSOR_NAME));
+      wired.setParams(params);
+      wired.setExpanderMeters(popupPort !== null);
+    });
   }
   chain.setParams(params);
   chain.setBypass(bypass);
@@ -129,6 +150,7 @@ function sendState(): void {
     mediaCount: liveElements.size,
     contextState: contextState(),
     bypass,
+    expanderAvailable: workletOk,
     params,
   };
   popupPort.postMessage(msg);
@@ -141,10 +163,12 @@ function sendMeters(): void {
   let outPeak = 0;
   let outRms = 0;
   let reduction = 0;
+  let expReduction = 0;
   let clipped = false;
   for (const el of liveElements) {
     const chain = chains.get(el);
     if (!chain) continue;
+    expReduction = Math.min(expReduction, chain.expanderGrDb);
     chain.inputAnalyser.getFloatTimeDomainData(meterBuffer);
     inPeak = Math.max(inPeak, peak(meterBuffer));
     inRms = Math.max(inRms, rms(meterBuffer));
@@ -163,6 +187,7 @@ function sendMeters(): void {
     inPeak,
     inRms,
     reduction,
+    expReduction,
     outPeak,
     outRms,
     clipped,
@@ -196,10 +221,16 @@ chrome.runtime.onConnect.addListener((port) => {
       clearInterval(meterTimer);
       meterTimer = null;
     }
+    setExpanderMetersAll(false);
   });
   sendState();
   meterTimer = setInterval(sendMeters, METER_INTERVAL_MS);
+  setExpanderMetersAll(true);
 });
+
+function setExpanderMetersAll(on: boolean): void {
+  for (const el of liveElements) chains.get(el)?.setExpanderMeters(on);
+}
 
 // --- keyboard command relayed by the service worker ---
 

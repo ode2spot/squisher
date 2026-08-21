@@ -23,6 +23,11 @@
         <span id="readout-in" class="readout">-inf</span>
       </div>
       <div class="meter-row">
+        <span class="meter-label">EXP</span>
+        <canvas id="meter-exp" width="220" height="16"></canvas>
+        <span id="readout-exp" class="readout">0.0</span>
+      </div>
+      <div class="meter-row">
         <span class="meter-label">GR</span>
         <canvas id="meter-gr" width="220" height="16"></canvas>
         <span id="readout-gr" class="readout">0.0</span>
@@ -55,6 +60,18 @@
     <details id="advanced">
       <summary>Advanced</summary>
       <div id="comp-controls" class="param-grid"></div>
+    </details>
+
+    <details id="expander">
+      <summary>Expander</summary>
+      <div class="param-grid">
+        <div class="eq-band-head">
+          <input id="exp-enable" type="checkbox" />
+          <span>DOWNWARD EXPANDER</span>
+          <span id="exp-unavailable" class="unavailable" hidden>(blocked on this page)</span>
+        </div>
+        <div id="exp-controls"></div>
+      </div>
     </details>
 
     <details id="eq">

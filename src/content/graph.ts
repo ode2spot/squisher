@@ -2,6 +2,7 @@
 //
 //   MediaElementSource
 //     -> inputAnalyser
+//     -> expander (AudioWorkletNode, attached once the module loads)
 //     -> EQ: lowShelf -> param1 -> param2 -> highShelf   (BiquadFilterNodes)
 //     -> DynamicsCompressorNode
 //     -> makeupGain
@@ -30,7 +31,11 @@ export class MediaChain {
   private readonly makeupGain: GainNode;
   private readonly eqBands: Record<string, BiquadFilterNode>;
   private readonly processingHead: AudioNode;
+  private expander: AudioWorkletNode | null = null;
+  /** Latest gain reduction reported by the expander worklet, in dB (<= 0). */
+  expanderGrDb = 0;
   private bypassed = false;
+  private lastParams: SquisherParams | null = null;
 
   constructor(ctx: AudioContext, element: HTMLMediaElement) {
     this.ctx = ctx;
@@ -75,7 +80,42 @@ export class MediaChain {
     this.inputAnalyser.connect(this.processingHead);
   }
 
+  /** The node the input analyser feeds when processing is engaged. */
+  private chainHead(): AudioNode {
+    return this.expander ?? this.processingHead;
+  }
+
+  /**
+   * Insert the expander worklet node between the input tap and the rest of
+   * the chain. Called once per chain, after audioWorklet.addModule resolves
+   * (the rest of the graph runs fine before/without it).
+   */
+  attachExpander(node: AudioWorkletNode): void {
+    if (this.expander) return;
+    this.expander = node;
+    node.port.onmessage = (e: MessageEvent<{ gr: number }>) => {
+      this.expanderGrDb = e.data.gr;
+    };
+    node.connect(this.processingHead);
+    if (!this.bypassed) {
+      this.inputAnalyser.disconnect();
+      this.inputAnalyser.connect(node);
+    }
+    if (this.lastParams) this.sendExpanderParams(this.lastParams);
+  }
+
+  setExpanderMeters(on: boolean): void {
+    this.expander?.port.postMessage({ type: 'meters', on });
+    if (!on) this.expanderGrDb = 0;
+  }
+
+  private sendExpanderParams(params: SquisherParams): void {
+    this.expander?.port.postMessage({ type: 'params', ...params.expander });
+  }
+
   setParams(params: SquisherParams): void {
+    this.lastParams = params;
+    this.sendExpanderParams(params);
     const c = params.compressor;
     this.compressor.threshold.value = c.threshold;
     this.compressor.knee.value = c.knee;
@@ -110,7 +150,7 @@ export class MediaChain {
     } else {
       this.source.disconnect();
       this.source.connect(this.inputAnalyser);
-      this.inputAnalyser.connect(this.processingHead);
+      this.inputAnalyser.connect(this.chainHead());
     }
   }
 

@@ -12,9 +12,11 @@ import {
   EQ_FREQ_RANGES,
   EQ_GAIN_RANGE,
   EQ_Q_RANGE,
+  EXPANDER_RANGES,
   defaultParams,
   type CompressorParams,
   type EqBandId,
+  type ExpanderParams,
   type SquisherParams,
 } from '../shared/params';
 import { BUILT_IN_PRESETS, applyAmount } from '../shared/presets';
@@ -77,8 +79,10 @@ const readoutGr = el<HTMLSpanElement>('readout-gr');
 const readoutOut = el<HTMLSpanElement>('readout-out');
 
 const meterIn = new LevelMeter(el<HTMLCanvasElement>('meter-in'));
+const meterExp = new GrMeter(el<HTMLCanvasElement>('meter-exp'));
 const meterGr = new GrMeter(el<HTMLCanvasElement>('meter-gr'));
 const meterOut = new LevelMeter(el<HTMLCanvasElement>('meter-out'));
+const readoutExp = el<HTMLSpanElement>('readout-exp');
 const eqCurve = new EqCurve(el<HTMLCanvasElement>('eq-curve'));
 
 // --- generated controls ---
@@ -103,6 +107,39 @@ const compRows = {} as Record<keyof CompressorParams, SliderRow>;
     compRows[key] = row;
     grid.append(row.root);
   }
+}
+
+const EXP_LABELS: Record<Exclude<keyof ExpanderParams, 'enabled'>, string> = {
+  threshold: 'THRESH',
+  ratio: 'RATIO',
+  attack: 'ATTACK',
+  release: 'RELEASE',
+  depth: 'DEPTH',
+};
+
+const expEnable = el<HTMLInputElement>('exp-enable');
+const expRows = {} as Record<Exclude<keyof ExpanderParams, 'enabled'>, SliderRow>;
+{
+  const grid = el<HTMLDivElement>('exp-controls');
+  for (const key of Object.keys(EXPANDER_RANGES) as Array<
+    Exclude<keyof ExpanderParams, 'enabled'>
+  >) {
+    const row = sliderRow(EXP_LABELS[key], EXPANDER_RANGES[key], (value) => {
+      params.expander[key] = value;
+      onParamsEdited();
+    });
+    expRows[key] = row;
+    grid.append(row.root);
+  }
+  expEnable.addEventListener('change', () => {
+    params.expander.enabled = expEnable.checked;
+    onParamsEdited();
+    syncExpanderEnabled();
+  });
+}
+
+function syncExpanderEnabled(): void {
+  for (const row of Object.values(expRows)) row.setEnabled(params.expander.enabled);
 }
 
 const EQ_LABELS: Record<EqBandId, string> = {
@@ -179,6 +216,13 @@ function renderControls(): void {
   for (const key of Object.keys(COMPRESSOR_RANGES) as Array<keyof CompressorParams>) {
     compRows[key].set(params.compressor[key]);
   }
+  expEnable.checked = params.expander.enabled;
+  for (const key of Object.keys(EXPANDER_RANGES) as Array<
+    Exclude<keyof ExpanderParams, 'enabled'>
+  >) {
+    expRows[key].set(params.expander[key]);
+  }
+  syncExpanderEnabled();
   for (const id of EQ_BAND_IDS) {
     const rows = eqRows[id];
     rows.enable.checked = params.eq[id].enabled;
@@ -311,6 +355,9 @@ function handleMessage(msg: ContentToPopup): void {
       mediaCount: msg.mediaCount,
       contextState: msg.contextState,
     });
+    if (!msg.expanderAvailable && msg.mediaCount > 0) {
+      el<HTMLSpanElement>('exp-unavailable').hidden = false;
+    }
     if (msg.isTop && !hostname) {
       hostname = msg.hostname;
       siteName.textContent = hostname;
@@ -421,6 +468,7 @@ function aggregateMeters(now: number) {
   let outPeak = 0;
   let outRms = 0;
   let reduction = 0;
+  let expReduction = 0;
   let any = false;
   for (const [id, frame] of meterFrames) {
     if (now - frame.at > METER_STALE_MS) {
@@ -433,8 +481,9 @@ function aggregateMeters(now: number) {
     outPeak = Math.max(outPeak, frame.msg.outPeak);
     outRms = Math.max(outRms, frame.msg.outRms);
     reduction = Math.min(reduction, frame.msg.reduction);
+    expReduction = Math.min(expReduction, frame.msg.expReduction);
   }
-  return { any, inPeak, inRms, outPeak, outRms, reduction };
+  return { any, inPeak, inRms, outPeak, outRms, reduction, expReduction };
 }
 
 function fmtDb(db: number): string {
@@ -443,12 +492,14 @@ function fmtDb(db: number): string {
 
 function meterLoop(now: number): void {
   const m = aggregateMeters(now);
+  const expDb = meterExp.draw(m.any ? m.expReduction : 0, now);
   const grDb = meterGr.draw(m.any ? m.reduction : 0, now);
   const inLevels = meterIn.draw(m.inRms, m.inPeak, now);
   const outLevels = meterOut.draw(m.outRms, m.outPeak, now);
   readoutIn.textContent = fmtDb(m.any ? inLevels.heldDb : -Infinity);
   readoutOut.textContent = fmtDb(m.any ? outLevels.heldDb : -Infinity);
   readoutGr.textContent = grDb <= -0.05 ? grDb.toFixed(1) : '0.0';
+  readoutExp.textContent = expDb <= -0.05 ? expDb.toFixed(1) : '0.0';
   requestAnimationFrame(meterLoop);
 }
 

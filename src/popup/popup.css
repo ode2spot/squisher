@@ -319,6 +319,12 @@ details[open] summary {
   margin: 0;
 }
 
+.unavailable {
+  color: var(--amber);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Meter falloff animation is disabled in JS; nothing else animates. */
 }

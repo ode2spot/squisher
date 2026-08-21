@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { amountToCompressor, applyAmount, BUILT_IN_PRESETS } from '../src/shared/presets';
-import { COMPRESSOR_RANGES, defaultParams, EQ_BAND_IDS } from '../src/shared/params';
+import {
+  COMPRESSOR_RANGES,
+  defaultParams,
+  EQ_BAND_IDS,
+  EXPANDER_RANGES,
+} from '../src/shared/params';
 
 test('amount 0 means no compression', () => {
   const c = amountToCompressor(0);
@@ -66,6 +71,10 @@ test('built-in presets exist and are complete', () => {
       const v = p.params.compressor[key as keyof typeof p.params.compressor];
       assert.ok(v >= range.min && v <= range.max, `${p.name} ${key}=${v} out of range`);
     }
+    for (const [key, range] of Object.entries(EXPANDER_RANGES)) {
+      const v = p.params.expander[key as keyof typeof EXPANDER_RANGES];
+      assert.ok(v >= range.min && v <= range.max, `${p.name} expander ${key}=${v} out of range`);
+    }
   }
 });
 
@@ -76,6 +85,12 @@ test('"Off" preset is flat', () => {
   for (const band of EQ_BAND_IDS) {
     assert.equal(off.params.eq[band].enabled, false);
     assert.equal(off.params.eq[band].gain, 0);
+  }
+});
+
+test('only "Old film dialogue" enables the expander', () => {
+  for (const p of BUILT_IN_PRESETS) {
+    assert.equal(p.params.expander.enabled, p.name === 'Old film dialogue', p.name);
   }
 });
 

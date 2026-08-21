@@ -5,6 +5,10 @@ import type { SquisherParams } from './params';
 /** Port name the popup uses to talk to the content script(s) in a tab. */
 export const POPUP_PORT = 'squisher-popup';
 
+/** AudioWorklet processor name; must match the registerProcessor call in
+ *  content/expander-processor.ts (bundled standalone, can't import this). */
+export const EXPANDER_PROCESSOR_NAME = 'squisher-expander';
+
 export type ContextState = 'none' | 'running' | 'suspended';
 
 /** Content script -> popup, over the popup port. */
@@ -19,6 +23,9 @@ export type ContentToPopup =
       mediaCount: number;
       contextState: ContextState;
       bypass: boolean;
+      /** False when the expander worklet failed to load in this frame
+       *  (e.g. blocked by site CSP); the rest of the chain still runs. */
+      expanderAvailable: boolean;
       params: SquisherParams;
     }
   | {
@@ -29,6 +36,8 @@ export type ContentToPopup =
       inRms: number;
       /** dB of gain reduction from DynamicsCompressorNode.reduction (<= 0). */
       reduction: number;
+      /** dB of downward expansion from the expander worklet (<= 0). */
+      expReduction: number;
       outPeak: number;
       outRms: number;
       /** True if any output sample hit full scale during this frame. */

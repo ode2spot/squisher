@@ -29,6 +29,7 @@ async function copyStatics() {
 const buildOptions = {
   entryPoints: [
     { in: 'src/content/index.ts', out: 'content' },
+    { in: 'src/content/expander-processor.ts', out: 'expander-processor' },
     { in: 'src/popup/popup.ts', out: 'popup' },
     { in: 'src/background/service-worker.ts', out: 'service-worker' },
   ],

@@ -1,6 +1,6 @@
 // Settings persistence in chrome.storage.sync. The pure key/resolution logic
 // is separated from the chrome.* calls so it can be unit tested under node.
-import { defaultParams, type SquisherParams } from './params';
+import { defaultParams, normalizeParams, type SquisherParams } from './params';
 
 export const GLOBAL_KEY = 'settings:global';
 export const SITE_KEY_PREFIX = 'settings:site:';
@@ -32,10 +32,11 @@ export function resolveSettings(
   entries: Record<string, unknown>,
   hostname: string,
 ): { params: SquisherParams; source: 'site' | 'global' | 'default' } {
+  // normalizeParams fills in fields older stored versions didn't have.
   const site = entries[siteKey(hostname)] as StoredSettings | undefined;
-  if (site?.params) return { params: site.params, source: 'site' };
+  if (site?.params) return { params: normalizeParams(site.params), source: 'site' };
   const global = entries[GLOBAL_KEY] as StoredSettings | undefined;
-  if (global?.params) return { params: global.params, source: 'global' };
+  if (global?.params) return { params: normalizeParams(global.params), source: 'global' };
   return { params: defaultParams(), source: 'default' };
 }
 

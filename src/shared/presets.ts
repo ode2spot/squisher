@@ -115,6 +115,14 @@ export const BUILT_IN_PRESETS: readonly Preset[] = [
       release: 0.35,
       makeupGain: 4,
     };
+    p.expander = {
+      enabled: true,
+      threshold: -45,
+      ratio: 2,
+      attack: 0.002,
+      release: 0.25,
+      depth: 12,
+    };
     p.eq.lowShelf = { enabled: true, freq: 120, gain: -4, q: 1 };
     p.eq.param1 = { enabled: true, freq: 2500, gain: 3, q: 1.2 };
     p.eq.highShelf = { enabled: true, freq: 8000, gain: -2, q: 1 };

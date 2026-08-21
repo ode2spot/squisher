@@ -21,6 +21,20 @@ export interface CompressorParams {
   makeupGain: number;
 }
 
+export interface ExpanderParams {
+  enabled: boolean;
+  /** dB; below this the signal is pushed down. */
+  threshold: number;
+  /** 1..10 downward expansion ratio below threshold. */
+  ratio: number;
+  /** seconds — how fast gain recovers when signal comes back. Log scale. */
+  attack: number;
+  /** seconds — how fast attenuation sets in as signal falls away. Log scale. */
+  release: number;
+  /** dB, maximum attenuation (the expansion floor). */
+  depth: number;
+}
+
 export type EqBandId = 'lowShelf' | 'param1' | 'param2' | 'highShelf';
 
 export const EQ_BAND_IDS: readonly EqBandId[] = ['lowShelf', 'param1', 'param2', 'highShelf'];
@@ -39,6 +53,7 @@ export interface SquisherParams {
   /** 0..100 macro; moves threshold/ratio/makeup together (see presets.ts). */
   amount: number;
   compressor: CompressorParams;
+  expander: ExpanderParams;
   eq: Record<EqBandId, EqBandParams>;
 }
 
@@ -59,6 +74,14 @@ export const COMPRESSOR_RANGES: Record<keyof CompressorParams, Range> = {
   makeupGain: { min: 0, max: 24, log: false, unit: 'dB' },
 };
 
+export const EXPANDER_RANGES: Record<Exclude<keyof ExpanderParams, 'enabled'>, Range> = {
+  threshold: { min: -80, max: 0, log: false, unit: 'dB' },
+  ratio: { min: 1, max: 10, log: false, unit: ':1' },
+  attack: { min: 0.0005, max: 0.1, log: true, unit: 's' },
+  release: { min: 0.01, max: 1, log: true, unit: 's' },
+  depth: { min: 0, max: 60, log: false, unit: 'dB' },
+};
+
 export const EQ_GAIN_RANGE: Range = { min: -15, max: 15, log: false, unit: 'dB' };
 export const EQ_Q_RANGE: Range = { min: 0.1, max: 10, log: true, unit: '' };
 
@@ -77,6 +100,32 @@ export const EQ_BAND_FILTER_TYPES: Record<EqBandId, BiquadFilterType> = {
   highShelf: 'highshelf',
 };
 
+/**
+ * Merge a possibly-partial/older stored parameter object onto the defaults,
+ * so settings saved by earlier versions (e.g. before the expander existed)
+ * load with sane values for the fields they lack.
+ */
+export function normalizeParams(raw: unknown): SquisherParams {
+  const d = defaultParams();
+  if (typeof raw !== 'object' || raw === null) return d;
+  const r = raw as {
+    amount?: unknown;
+    compressor?: unknown;
+    expander?: unknown;
+    eq?: Partial<Record<EqBandId, unknown>>;
+  };
+  const section = <T extends object>(base: T, over: unknown): T =>
+    typeof over === 'object' && over !== null ? { ...base, ...over } : base;
+  const eq = {} as Record<EqBandId, EqBandParams>;
+  for (const id of EQ_BAND_IDS) eq[id] = section(d.eq[id], r.eq?.[id]);
+  return {
+    amount: typeof r.amount === 'number' ? r.amount : d.amount,
+    compressor: section(d.compressor, r.compressor),
+    expander: section(d.expander, r.expander),
+    eq,
+  };
+}
+
 export function defaultParams(): SquisherParams {
   return {
     amount: 0,
@@ -87,6 +136,14 @@ export function defaultParams(): SquisherParams {
       attack: 0.003,
       release: 0.25,
       makeupGain: 0,
+    },
+    expander: {
+      enabled: false,
+      threshold: -50,
+      ratio: 2,
+      attack: 0.002,
+      release: 0.2,
+      depth: 15,
     },
     eq: {
       lowShelf: { enabled: false, freq: 120, gain: 0, q: 1 },
